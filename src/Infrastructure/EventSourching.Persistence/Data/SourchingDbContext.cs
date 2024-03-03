@@ -1,7 +1,7 @@
-﻿using EventSourching.Domain.Aggregates.UserAggregate;
+﻿using EventSourching.Domain.Aggregates.TriggeredEventAggretages;
+using EventSourching.Domain.Aggregates.UserAggregate;
 using EventSourching.Domain.Common.Abstractions;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection.Emit;
 
 namespace EventSourching.Persistence.Data
 {
@@ -16,6 +16,7 @@ namespace EventSourching.Persistence.Data
         }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<TriggeredEvent> TriggeredEvents { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

@@ -11,10 +11,12 @@ namespace EventSourching.Application.Features.Commands.CreateUser
     {
         private readonly IDomainEventRepository<User, UserId> _userRepo;
         private readonly IUserRepository _userRepository;
-        public CreateUserCommandHandler(IDomainEventRepository<User, UserId> userRepo, IUserRepository userRepository)
+        private readonly ITriggeredEventRepository _triggeredEventRepository;
+        public CreateUserCommandHandler(IDomainEventRepository<User, UserId> userRepo, IUserRepository userRepository, ITriggeredEventRepository triggeredEventRepository)
         {
             _userRepo = userRepo;
             _userRepository = userRepository;
+            _triggeredEventRepository = triggeredEventRepository;
         }
 
         public async Task<bool> Handle(CreateUserCommandRequest request, CancellationToken cancellationToken)
@@ -25,23 +27,21 @@ namespace EventSourching.Application.Features.Commands.CreateUser
 
                 await _userRepository.AddAsync(user);
 
-                Guid eventId = Guid.NewGuid();
-
-                var userEvent = new UserCreatedDomainEvent(eventId, user.Username, user.Email, user.Password);
+                var userEvent = new UserCreatedDomainEvent(Guid.NewGuid(), user.Username, user.Email, user.Password);
                 userEvent.AddSerializeData(userEvent);
                 user.AddUserDomainEvent(userEvent, typeof(UserCreatedDomainEvent));
 
-                var roleEvent = new RoleCreatedDomainEvent(eventId, request.userCreateViewModel.Email);
+                var roleEvent = new RoleCreatedDomainEvent(Guid.NewGuid(), request.userCreateViewModel.Email);
                 roleEvent.AddSerializeData(roleEvent);
                 user.AddUserDomainEvent(roleEvent, typeof(RoleCreatedDomainEvent));
 
-                var userStateEvent = new UserStateUpdateDomainEvent(eventId, user.Id.Id, request.userCreateViewModel.Email);
-                userStateEvent.AddSerializeData(userStateEvent);
-                user.AddUserDomainEvent(userStateEvent, typeof(UserStateUpdateDomainEvent));
-
-                bool isSucceess = await _userRepo.SendAsync(user);
+                //var userStateEvent = new UserStateUpdateDomainEvent(Guid.NewGuid(), user.Id.Id, request.userCreateViewModel.Email);
+                //userStateEvent.AddSerializeData(userStateEvent);
+                //user.AddUserDomainEvent(userStateEvent, typeof(UserStateUpdateDomainEvent));
 
                 await _userRepository.SaveChangesAsync();
+
+                bool isSucceess = await _userRepo.SendAsync(user);
 
                 return isSucceess;
             }

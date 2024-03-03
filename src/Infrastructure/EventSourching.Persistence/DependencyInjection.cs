@@ -23,6 +23,8 @@ namespace EventSourching.Persistence
 
             services.AddScoped<IUserRepository, UserRepository>();
 
+            services.AddScoped<ITriggeredEventRepository, TriggeredEventRepository>();
+
             services.AddSingleton<IDomainEventHandler<UserCreatedDomainEvent>, UserCreatedDomainEventHandler>();
 
             services.AddSingleton<IDomainEventHandler<UserStateUpdateDomainEvent>, UserStateUpdateDomainEventHandler>();

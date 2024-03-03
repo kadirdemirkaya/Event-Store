@@ -1,4 +1,5 @@
-﻿using EventSourching.Domain.Common;
+﻿using EventSourching.Application.Abstractions;
+using EventSourching.Domain.Common;
 using EventSourching.Domain.Common.Abstractions;
 using EventStore.ClientAPI;
 using System.Text;
@@ -12,11 +13,12 @@ namespace EventSourching.Application.Repositories
     {
         private readonly IEventStoreConnection _connection;
         private readonly IServiceProvider _serviceProvider;
-
-        public DomainEventRepository(IEventStoreConnection connection, IServiceProvider serviceProvider)
+        private readonly ITriggeredEventRepository _triggeredEventRepository;
+        public DomainEventRepository(IEventStoreConnection connection, IServiceProvider serviceProvider, ITriggeredEventRepository triggeredEventRepository)
         {
             _connection = connection;
             _serviceProvider = serviceProvider;
+            _triggeredEventRepository = triggeredEventRepository;
         }
 
         public async Task<bool> SendAsync(T aggregate)
@@ -35,8 +37,8 @@ namespace EventSourching.Application.Repositories
                 if (!events.Any())
                     return default;
 
-                await _connection.AppendToStreamAsync(typeof(T).Name, ExpectedVersion.Any, events);
-                await GetDataAsync(typeof(T).Name, aggregate);
+                await _connection.AppendToStreamAsync(GetStreamName(), ExpectedVersion.Any, events);
+                await GetDataAsync(GetStreamName(), aggregate);
                 aggregate.ClearDomainEvents();
                 aggregate.ClearEventTypes();
                 return true;
@@ -88,7 +90,7 @@ namespace EventSourching.Application.Repositories
 
         public async Task DeleteStreamAsync()
         {
-            await _connection.DeleteStreamAsync(typeof(T).Name, ExpectedVersion.Any);
+            await _connection.DeleteStreamAsync(GetStreamName(), ExpectedVersion.Any);
         }
 
         public async Task GetDataAsync(string streamName, T aggregate)
@@ -98,9 +100,14 @@ namespace EventSourching.Application.Repositories
             {
                 foreach (var @event in events)
                 {
+                    var DATAS = _triggeredEventRepository.GetAll().ToList();
+                    if (_triggeredEventRepository.GetWhere(t => t.TriggerId == @event.EventId).Any())
+                        continue;
                     var type = aggregate.GetTypeForDic(@event.Metadata);
                     var data = JsonSerializer.Deserialize(@event.Data.ToString(), type);
                     await PublishEvents(type, data);
+                    await _triggeredEventRepository.AddAsync(new() { TriggerId = @event.EventId });
+                    await _triggeredEventRepository.SaveChangesAsync();
                 }
                 #region test
                 // it is not right to delete
@@ -128,6 +135,16 @@ namespace EventSourching.Application.Repositories
             {
                 throw new Exception(ex.Message);
             }
+        }
+
+        private string GetStreamName()
+        {
+            DateTime now = DateTime.Now;
+            string year = now.Year.ToString();
+            string month = now.Month.ToString().PadLeft(2, '0');
+            string day = now.Day.ToString().PadLeft(2, '0');
+
+            return $"{year}{month}{day}";
         }
 
         private Type GetTypeWithMetaDate(byte[] metadata, T aggregate)
