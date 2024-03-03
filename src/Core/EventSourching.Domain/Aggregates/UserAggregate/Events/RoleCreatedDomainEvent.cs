@@ -6,12 +6,15 @@ namespace EventSourching.Domain.Aggregates.UserAggregate.Events
 {
     public class RoleCreatedDomainEvent : DomainEvent, IDomainEvent
     {
+        public Guid Id { get; set; } = Guid.NewGuid();
         public string Type { get; set; } = typeof(RoleCreatedDomainEvent).Name;
         public string Email { get; set; }
         public string Payload { get; set; }
+        public bool IsActive { get; set; } = true;
 
-        public RoleCreatedDomainEvent(string email)
+        public RoleCreatedDomainEvent(Guid id,string email)
         {
+            Id = id;
             Email = email;
         }
 

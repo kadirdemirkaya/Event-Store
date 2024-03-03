@@ -25,7 +25,7 @@ namespace EventSourching.Application.Repositories
             {
                 List<EventData> events = aggregate.DomainEvents
                 .Select(@event => new EventData(
-                    eventId: Guid.NewGuid(),
+                    eventId: @event.Id,
                     type: @event.GetType().Name,
                     isJson: true,
                     data: Encoding.UTF8.GetBytes(@event.Payload),
@@ -102,7 +102,11 @@ namespace EventSourching.Application.Repositories
                     var data = JsonSerializer.Deserialize(@event.Data.ToString(), type);
                     await PublishEvents(type, data);
                 }
-                await DeleteStreamAsync();
+                #region test
+                // it is not right to delete
+                //await DeleteStreamAsync();
+
+                #endregion
             }
             catch (Exception ex)
             {

@@ -21,19 +21,21 @@ namespace EventSourching.Application.Features.Commands.CreateUser
         {
             try
             {
-                var user = EventSourching.Domain.Aggregates.UserAggregate.User.Create(request.userCreateViewModel.Username, request.userCreateViewModel.Email, request.userCreateViewModel.Password);
+                var user = User.Create(Guid.NewGuid(), request.userCreateViewModel.Username, request.userCreateViewModel.Email, request.userCreateViewModel.Password);
 
-                await _userRepository.AddAsync(User.Create(UserId.CreateUnique(), request.userCreateViewModel.Username, request.userCreateViewModel.Email, request.userCreateViewModel.Password));
+                await _userRepository.AddAsync(user);
 
-                var userEvent = new UserCreatedDomainEvent(user.Username, user.Email, user.Password);
+                Guid eventId = Guid.NewGuid();
+
+                var userEvent = new UserCreatedDomainEvent(eventId, user.Username, user.Email, user.Password);
                 userEvent.AddSerializeData(userEvent);
                 user.AddUserDomainEvent(userEvent, typeof(UserCreatedDomainEvent));
 
-                var roleEvent = new RoleCreatedDomainEvent(request.userCreateViewModel.Email);
+                var roleEvent = new RoleCreatedDomainEvent(eventId, request.userCreateViewModel.Email);
                 roleEvent.AddSerializeData(roleEvent);
                 user.AddUserDomainEvent(roleEvent, typeof(RoleCreatedDomainEvent));
 
-                var userStateEvent = new UserStateUpdateDomainEvent(Guid.NewGuid(), request.userCreateViewModel.Email);
+                var userStateEvent = new UserStateUpdateDomainEvent(eventId, user.Id.Id, request.userCreateViewModel.Email);
                 userStateEvent.AddSerializeData(userStateEvent);
                 user.AddUserDomainEvent(userStateEvent, typeof(UserStateUpdateDomainEvent));
 
